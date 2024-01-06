@@ -6,7 +6,7 @@ import (
 	"io"
 	"bufio"
 
-	"rootmos.io/logging"
+	"rootmos.io/go-utils/logging"
 )
 
 func SetupTestLogger(ctx context.Context, t *testing.T) context.Context {
