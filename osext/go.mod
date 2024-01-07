@@ -2,17 +2,13 @@ module rootmos.io/go-utils/osext
 
 go 1.21.5
 
-replace rootmos.io/go-utils/hashed => ../hashed
-
-replace rootmos.io/go-utils/logging => ../logging
-
 require (
 	github.com/aws/aws-sdk-go-v2 v1.24.1
 	github.com/aws/aws-sdk-go-v2/config v1.26.3
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.48.0
 	github.com/aws/smithy-go v1.19.0
-	rootmos.io/go-utils/hashed v0.0.0-00010101000000-000000000000
-	rootmos.io/go-utils/logging v0.0.0-20240106143743-0ce99dd40e1f
+	rootmos.io/go-utils/hashed v0.1.0
+	rootmos.io/go-utils/logging v0.1.0
 )
 
 require (
