@@ -8,6 +8,11 @@ import (
 func ExampleHumanHandler() {
 	cfg := Config {
 		HumanWriter: os.Stdout,
+		HumanFields: HumanHandlerFields {
+			OmitTime: true,
+			OmitPID: true,
+			OmitCaller: true,
+		},
 	}
 
 	logger, closer, err := cfg.SetupLogger()
@@ -17,4 +22,6 @@ func ExampleHumanHandler() {
 	defer closer()
 
 	logger.Infof("hello: %d", 7)
+
+	// Output: hello: 7
 }

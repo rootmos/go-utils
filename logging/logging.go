@@ -71,6 +71,7 @@ type Config struct {
 	HumanLevel Level
 	humanFileFlag *string
 	humanCloser io.Closer
+	HumanFields HumanHandlerFields
 
 	JsonWriter io.Writer
 	jsonLevelFlag *string
@@ -131,7 +132,8 @@ func (c *Config) SetupLogger() (l *Logger, closer func() error, err error) {
 
 		hs = append(hs, &HumanHandler {
 			w: c.HumanWriter,
-			level: level,
+			Level: level,
+			Fields: c.HumanFields,
 		})
 	}
 

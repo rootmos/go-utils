@@ -10,19 +10,33 @@ import (
 
 type HumanHandler struct {
 	w io.Writer
-	level Level
+	Level Level
+
+	Fields HumanHandlerFields
+}
+
+
+type HumanHandlerFields struct {
+	OmitTime bool
+	OmitPID bool
+	OmitCaller bool
 }
 
 func (h *HumanHandler) Enabled(_ context.Context, lvl slog.Level) bool {
-	return h.w != nil && lvl >= slog.Level(h.level)
+	return h.w != nil && lvl >= slog.Level(h.Level)
 }
 
 const CompactRFC3339Layout = "20060102T150405Z"
 
 func (h *HumanHandler) Handle(_ context.Context, r slog.Record) (err error) {
 	var sb strings.Builder
-	if _, err = sb.WriteString(r.Time.UTC().Format(CompactRFC3339Layout)); err != nil {
-		return err
+
+	var fieldPrefix string
+	if !h.Fields.OmitTime {
+		if _, err = sb.WriteString(r.Time.UTC().Format(CompactRFC3339Layout)); err != nil {
+			return err
+		}
+		fieldPrefix = ":"
 	}
 
 	var pid int64 = -1
@@ -64,32 +78,41 @@ func (h *HumanHandler) Handle(_ context.Context, r slog.Record) (err error) {
 		return err
 	}
 
-	if pid >= 0 {
-		if _, err = fmt.Fprintf(&sb, ":%d", pid); err != nil {
+	if !h.Fields.OmitPID && pid >= 0 {
+		if _, err = fmt.Fprintf(&sb, "%s%d", fieldPrefix, pid); err != nil {
 			return err
 		}
+		fieldPrefix = ":"
 	}
 
-	if caller != "" {
-		if _, err = fmt.Fprintf(&sb, ":%s", caller); err != nil {
+	if !h.Fields.OmitCaller {
+		if caller != "" {
+			if _, err = fmt.Fprintf(&sb, "%s%s", fieldPrefix, caller); err != nil {
+				return err
+			}
+		}
+		fieldPrefix = ":"
+
+		if file != "" {
+			if _, err = fmt.Fprintf(&sb, "%s%s", fieldPrefix, file); err != nil {
+				return err
+			}
+		}
+		fieldPrefix = ":"
+
+		if line >= 0 {
+			if _, err = fmt.Fprintf(&sb, "%s%d", fieldPrefix, line); err != nil {
+				return err
+			}
+		}
+		fieldPrefix = ":"
+	}
+
+
+	if fieldPrefix != "" {
+		if err = sb.WriteByte(' '); err != nil {
 			return err
 		}
-	}
-
-	if file != "" {
-		if _, err = fmt.Fprintf(&sb, ":%s", file); err != nil {
-			return err
-		}
-	}
-
-	if line >= 0 {
-		if _, err = fmt.Fprintf(&sb, ":%d", line); err != nil {
-			return err
-		}
-	}
-
-	if err = sb.WriteByte(' '); err != nil {
-		return err
 	}
 
 	if _, err = sb.WriteString(r.Message); err != nil {
