@@ -11,7 +11,6 @@ func ExampleHumanHandler() {
 		HumanFields: HumanHandlerFields {
 			OmitTime: true,
 			OmitPID: true,
-			OmitCaller: true,
 		},
 	}
 
@@ -23,5 +22,5 @@ func ExampleHumanHandler() {
 
 	logger.Infof("hello: %d", 7)
 
-	// Output: hello: 7
+	// Output: rootmos.io/go-utils/logging.ExampleHumanHandler:human_handler_test.go:23 hello: 7
 }

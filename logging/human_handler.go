@@ -1,11 +1,13 @@
 package logging
 
 import (
-	"io"
 	"context"
-	"log/slog"
-	"strings"
 	"fmt"
+	"io"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
 type HumanHandler struct {
@@ -27,6 +29,20 @@ func (h *HumanHandler) Enabled(_ context.Context, lvl slog.Level) bool {
 }
 
 const CompactRFC3339Layout = "20060102T150405Z"
+
+func maybeRelPath(path string) string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return path
+	}
+
+	rel, err := filepath.Rel(cwd, path)
+	if err != nil {
+		return path
+	}
+
+	return rel
+}
 
 func (h *HumanHandler) Handle(_ context.Context, r slog.Record) (err error) {
 	var sb strings.Builder
@@ -94,7 +110,8 @@ func (h *HumanHandler) Handle(_ context.Context, r slog.Record) (err error) {
 		fieldPrefix = ":"
 
 		if file != "" {
-			if _, err = fmt.Fprintf(&sb, "%s%s", fieldPrefix, file); err != nil {
+			path := maybeRelPath(file)
+			if _, err = fmt.Fprintf(&sb, "%s%s", fieldPrefix, path); err != nil {
 				return err
 			}
 		}
