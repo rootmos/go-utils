@@ -1,0 +1,24 @@
+image: alpine/edge
+packages:
+  - go
+tasks:
+  - test-hashed: |
+      cd go-utils/hashed
+      go build -v
+      go test -v
+  - test-logging: |
+      cd go-utils/logging
+      go build -v
+      go test -v
+  - test-sealedbox: |
+      cd go-utils/sealedbox
+      go build -v
+      go test -v
+  - test-osext: |
+      cd go-utils/osext
+      go build -v
+      go test -v
+triggers:
+  - action: email
+    condition: always
+    to: builds@rootmos.io
