@@ -224,7 +224,7 @@ func mkCloser(cs []io.Closer) (func() error) {
 	}
 }
 
-func (l *Logger) log(ctx context.Context, lvl Level, msg string, args... any) {
+func (l *Logger) log(ctx context.Context, lvl Level, msg string, args ...any) {
 	slvl := slog.Level(lvl)
 	if !l.inner.Enabled(ctx, slvl) {
 		return
@@ -250,4 +250,24 @@ func (l *Logger) log(ctx context.Context, lvl Level, msg string, args... any) {
 	r.Add(slog.Int("pid", os.Getpid()))
 
 	_ = l.inner.Handler().Handle(ctx, r)
+}
+
+func (l *Logger) Exit(code int, msg string, args ...any) {
+	l.ExitContext(nil, code, msg, args...)
+}
+
+func (l *Logger) ExitContext(ctx context.Context, code int, msg string, args ...any) {
+	l.log(ctx, LevelError, msg, args...)
+	if _, err := fmt.Fprintf(os.Stderr, "%s\n", msg); err != nil {
+		panic(err)
+	}
+	os.Exit(code)
+}
+
+func (l *Logger) Exitf(code int, format string, args ...any) {
+	l.ExitfContext(nil, code, format, args...)
+}
+
+func (l *Logger) ExitfContext(ctx context.Context, code int, format string, args ...any) {
+	l.ExitContext(ctx, code, fmt.Sprintf(format, args...))
 }
