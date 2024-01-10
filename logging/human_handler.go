@@ -12,12 +12,17 @@ import (
 
 type HumanHandler struct {
 	w io.Writer
-	Level Level
 
+	Level Level
 	Fields HumanHandlerFields
-	attrs []string
+
+	groups []group
 }
 
+type group struct {
+	name string
+	attrs []string
+}
 
 type HumanHandlerFields struct {
 	OmitTime bool
@@ -49,6 +54,41 @@ func renderAttr(a *slog.Attr) string {
 	return fmt.Sprintf("(%s: %v)", a.Key, a.Value)
 }
 
+func (h *HumanHandler) currentGroup() *group {
+	l := len(h.groups)
+	if l == 0 {
+		h.groups = []group{ group { } }
+	} else {
+		l -= 1
+	}
+	return &h.groups[l]
+}
+
+func (h0 *HumanHandler) WithGroup(name string) slog.Handler {
+	h1 := *h0
+
+	if len(h1.groups) == 0 {
+		h1.groups = []group{ group { } }
+	}
+
+	h1.groups = append(h1.groups, group {
+		name: name,
+	})
+
+	return &h1
+}
+
+func (h0 *HumanHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	h1 := *h0
+
+	g := h1.currentGroup()
+	for _, a := range attrs {
+		g.attrs = append(g.attrs, renderAttr(&a))
+	}
+
+	return &h1
+}
+
 func (h *HumanHandler) Handle(_ context.Context, r slog.Record) (err error) {
 	var sb strings.Builder
 
@@ -64,18 +104,7 @@ func (h *HumanHandler) Handle(_ context.Context, r slog.Record) (err error) {
 	var caller string
 	var file string
 	var line int64 = -1
-	var as strings.Builder
-
-	for _, a := range h.attrs {
-		if _, err = as.WriteString(" "); err != nil {
-			return err
-		}
-
-		if _, err = as.WriteString(a); err != nil {
-			return err
-		}
-	}
-
+	var attrs []*slog.Attr
 	r.Attrs(func(a slog.Attr) bool {
 		if a.Key == "pid" && a.Value.Kind() == slog.KindInt64 {
 			pid = a.Value.Int64()
@@ -100,17 +129,76 @@ func (h *HumanHandler) Handle(_ context.Context, r slog.Record) (err error) {
 			return true
 		}
 
-		if _, err = as.WriteString(" "); err != nil {
-			return false
-		}
-
-		if _, err = as.WriteString(renderAttr(&a)); err != nil {
-			return false
-		}
+		attrs = append(attrs, &a)
 
 		return true
 	})
-	if err != nil {
+
+	var as strings.Builder
+	n := len(h.groups)
+	var f func(i int) error
+	f = func(i int) error {
+		var g *group
+		if n == 0 && i == 0 {
+			g = &group {}
+		} else if i >= n {
+			return nil
+		} else {
+			g = &h.groups[i]
+		}
+
+		if len(g.attrs) > 0 || len(attrs) > 0 {
+			if i == 0 {
+				if _, err = as.WriteString(" "); err != nil {
+					return err
+				}
+			} else {
+				if _, err = fmt.Fprintf(&as, "(%s: ", g.name); err != nil {
+					return err
+				}
+			}
+		}
+
+		for j, a := range g.attrs {
+			if j > 0 {
+				if _, err = as.WriteString(" "); err != nil {
+					return err
+				}
+			}
+
+			if _, err = as.WriteString(a); err != nil {
+				return err
+			}
+		}
+
+		if n == 0 || i == n - 1 {
+			for j, a := range attrs {
+				if j > 0 || len(g.attrs) > 0 {
+					if _, err = as.WriteString(" "); err != nil {
+						return err
+					}
+				}
+				if _, err = as.WriteString(renderAttr(a)); err != nil {
+					return err
+				}
+			}
+
+		}
+
+		if err := f(i+1); err != nil {
+			return err
+		}
+
+		if i != 0 {
+			if _, err = as.WriteString(")"); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	if err := f(0); err != nil {
 		return err
 	}
 
@@ -166,16 +254,4 @@ func (h *HumanHandler) Handle(_ context.Context, r slog.Record) (err error) {
 
 	_, err = io.Copy(h.w, strings.NewReader(sb.String()))
 	return err
-}
-
-func (h0 *HumanHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	h1 := h0
-	for _, a := range attrs {
-		h1.attrs = append(h1.attrs, renderAttr(&a))
-	}
-	return h1
-}
-
-func (h *HumanHandler) WithGroup(name string) slog.Handler {
-	return h
 }

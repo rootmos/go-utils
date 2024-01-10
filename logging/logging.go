@@ -22,6 +22,10 @@ func (l *Logger) With(args ...any) *Logger {
 	return &Logger { inner: l.inner.With(args...) }
 }
 
+func (l *Logger) WithGroup(name string) *Logger {
+	return &Logger { inner: l.inner.WithGroup(name) }
+}
+
 func Set(ctx context.Context, logger *Logger) context.Context {
 	return context.WithValue(ctx, Key, logger)
 }
