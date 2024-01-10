@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 type HumanHandler struct {
@@ -90,11 +89,9 @@ func (h0 *HumanHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 }
 
 func (h *HumanHandler) Handle(_ context.Context, r slog.Record) (err error) {
-	var sb strings.Builder
-
 	var fieldPrefix string
 	if !h.Fields.OmitTime {
-		if _, err = sb.WriteString(r.Time.UTC().Format(CompactRFC3339Layout)); err != nil {
+		if _, err = io.WriteString(h.w, r.Time.UTC().Format(CompactRFC3339Layout)); err != nil {
 			return err
 		}
 		fieldPrefix = ":"
@@ -134,7 +131,47 @@ func (h *HumanHandler) Handle(_ context.Context, r slog.Record) (err error) {
 		return true
 	})
 
-	var as strings.Builder
+	if !h.Fields.OmitPID && pid >= 0 {
+		if _, err = fmt.Fprintf(h.w, "%s%d", fieldPrefix, pid); err != nil {
+			return err
+		}
+		fieldPrefix = ":"
+	}
+
+	if !h.Fields.OmitCaller {
+		if caller != "" {
+			if _, err = fmt.Fprintf(h.w, "%s%s", fieldPrefix, caller); err != nil {
+				return err
+			}
+		}
+		fieldPrefix = ":"
+
+		if file != "" {
+			path := maybeRelPath(file)
+			if _, err = fmt.Fprintf(h.w, "%s%s", fieldPrefix, path); err != nil {
+				return err
+			}
+		}
+		fieldPrefix = ":"
+
+		if line >= 0 {
+			if _, err = fmt.Fprintf(h.w, "%s%d", fieldPrefix, line); err != nil {
+				return err
+			}
+		}
+		fieldPrefix = ":"
+	}
+
+	if fieldPrefix != "" {
+		if _, err = io.WriteString(h.w, " "); err != nil {
+			return err
+		}
+	}
+
+	if _, err = io.WriteString(h.w, r.Message); err != nil {
+		return err
+	}
+
 	n := len(h.groups)
 	var f func(i int) error
 	f = func(i int) error {
@@ -149,11 +186,11 @@ func (h *HumanHandler) Handle(_ context.Context, r slog.Record) (err error) {
 
 		if len(g.attrs) > 0 || len(attrs) > 0 {
 			if i == 0 {
-				if _, err = as.WriteString(" "); err != nil {
+				if _, err = io.WriteString(h.w, " "); err != nil {
 					return err
 				}
 			} else {
-				if _, err = fmt.Fprintf(&as, "(%s: ", g.name); err != nil {
+				if _, err = fmt.Fprintf(h.w, "(%s: ", g.name); err != nil {
 					return err
 				}
 			}
@@ -161,12 +198,12 @@ func (h *HumanHandler) Handle(_ context.Context, r slog.Record) (err error) {
 
 		for j, a := range g.attrs {
 			if j > 0 {
-				if _, err = as.WriteString(" "); err != nil {
+				if _, err = io.WriteString(h.w, " "); err != nil {
 					return err
 				}
 			}
 
-			if _, err = as.WriteString(a); err != nil {
+			if _, err = io.WriteString(h.w, a); err != nil {
 				return err
 			}
 		}
@@ -174,11 +211,11 @@ func (h *HumanHandler) Handle(_ context.Context, r slog.Record) (err error) {
 		if n == 0 || i == n - 1 {
 			for j, a := range attrs {
 				if j > 0 || len(g.attrs) > 0 {
-					if _, err = as.WriteString(" "); err != nil {
+					if _, err = io.WriteString(h.w, " "); err != nil {
 						return err
 					}
 				}
-				if _, err = as.WriteString(renderAttr(a)); err != nil {
+				if _, err = io.WriteString(h.w, renderAttr(a)); err != nil {
 					return err
 				}
 			}
@@ -190,7 +227,7 @@ func (h *HumanHandler) Handle(_ context.Context, r slog.Record) (err error) {
 		}
 
 		if i != 0 {
-			if _, err = as.WriteString(")"); err != nil {
+			if _, err = io.WriteString(h.w, ")"); err != nil {
 				return err
 			}
 		}
@@ -202,56 +239,9 @@ func (h *HumanHandler) Handle(_ context.Context, r slog.Record) (err error) {
 		return err
 	}
 
-	if !h.Fields.OmitPID && pid >= 0 {
-		if _, err = fmt.Fprintf(&sb, "%s%d", fieldPrefix, pid); err != nil {
-			return err
-		}
-		fieldPrefix = ":"
-	}
-
-	if !h.Fields.OmitCaller {
-		if caller != "" {
-			if _, err = fmt.Fprintf(&sb, "%s%s", fieldPrefix, caller); err != nil {
-				return err
-			}
-		}
-		fieldPrefix = ":"
-
-		if file != "" {
-			path := maybeRelPath(file)
-			if _, err = fmt.Fprintf(&sb, "%s%s", fieldPrefix, path); err != nil {
-				return err
-			}
-		}
-		fieldPrefix = ":"
-
-		if line >= 0 {
-			if _, err = fmt.Fprintf(&sb, "%s%d", fieldPrefix, line); err != nil {
-				return err
-			}
-		}
-		fieldPrefix = ":"
-	}
-
-
-	if fieldPrefix != "" {
-		if err = sb.WriteByte(' '); err != nil {
-			return err
-		}
-	}
-
-	if _, err = sb.WriteString(r.Message); err != nil {
+	if _, err = io.WriteString(h.w, "\n"); err != nil {
 		return err
 	}
 
-	if _, err = sb.WriteString(as.String()); err != nil {
-		return err
-	}
-
-	if err = sb.WriteByte('\n'); err != nil {
-		return err
-	}
-
-	_, err = io.Copy(h.w, strings.NewReader(sb.String()))
-	return err
+	return nil
 }
