@@ -15,6 +15,7 @@ type HumanHandler struct {
 	Level Level
 
 	Fields HumanHandlerFields
+	attrs []string
 }
 
 
@@ -44,6 +45,10 @@ func maybeRelPath(path string) string {
 	return rel
 }
 
+func renderAttr(a *slog.Attr) string {
+	return fmt.Sprintf("(%s: %v)", a.Key, a.Value)
+}
+
 func (h *HumanHandler) Handle(_ context.Context, r slog.Record) (err error) {
 	var sb strings.Builder
 
@@ -60,6 +65,17 @@ func (h *HumanHandler) Handle(_ context.Context, r slog.Record) (err error) {
 	var file string
 	var line int64 = -1
 	var as strings.Builder
+
+	for _, a := range h.attrs {
+		if _, err = as.WriteString(" "); err != nil {
+			return err
+		}
+
+		if _, err = as.WriteString(a); err != nil {
+			return err
+		}
+	}
+
 	r.Attrs(func(a slog.Attr) bool {
 		if a.Key == "pid" && a.Value.Kind() == slog.KindInt64 {
 			pid = a.Value.Int64()
@@ -84,7 +100,11 @@ func (h *HumanHandler) Handle(_ context.Context, r slog.Record) (err error) {
 			return true
 		}
 
-		if _, err = fmt.Fprintf(&as, " (%s: %v)", a.Key, a.Value); err != nil {
+		if _, err = as.WriteString(" "); err != nil {
+			return false
+		}
+
+		if _, err = as.WriteString(renderAttr(&a)); err != nil {
 			return false
 		}
 
@@ -148,8 +168,12 @@ func (h *HumanHandler) Handle(_ context.Context, r slog.Record) (err error) {
 	return err
 }
 
-func (h *HumanHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return h
+func (h0 *HumanHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	h1 := h0
+	for _, a := range attrs {
+		h1.attrs = append(h1.attrs, renderAttr(&a))
+	}
+	return h1
 }
 
 func (h *HumanHandler) WithGroup(name string) slog.Handler {
