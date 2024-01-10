@@ -3,6 +3,7 @@ package logging
 import (
 	"os"
 	"log"
+	"log/slog"
 )
 
 func ExampleHumanHandler() {
@@ -29,9 +30,12 @@ func ExampleHumanHandler() {
 	logger3 := logger.WithGroup("c")
 	logger3.Info("baz", "d", true, "e", 10)
 
+	logger.Info("bye", slog.Group("g", "f", 11))
+
 	// Output:
-	// rootmos.io/go-utils/logging.ExampleHumanHandler:human_handler_test.go:23 hello: 7
-	// rootmos.io/go-utils/logging.ExampleHumanHandler:human_handler_test.go:24 foo (a: 8)
-	// rootmos.io/go-utils/logging.ExampleHumanHandler:human_handler_test.go:27 bar (b: 9)
-	// rootmos.io/go-utils/logging.ExampleHumanHandler:human_handler_test.go:30 baz (c: (d: true) (e: 10))
+	// rootmos.io/go-utils/logging.ExampleHumanHandler:human_handler_test.go:24 hello: 7
+	// rootmos.io/go-utils/logging.ExampleHumanHandler:human_handler_test.go:25 foo (a: 8)
+	// rootmos.io/go-utils/logging.ExampleHumanHandler:human_handler_test.go:28 bar (b: 9)
+	// rootmos.io/go-utils/logging.ExampleHumanHandler:human_handler_test.go:31 baz (c: (d: true) (e: 10))
+	// rootmos.io/go-utils/logging.ExampleHumanHandler:human_handler_test.go:33 bye (g: (f: 11))
 }

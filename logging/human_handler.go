@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type HumanHandler struct {
@@ -14,6 +15,7 @@ type HumanHandler struct {
 
 	Level Level
 	Fields HumanHandlerFields
+	TimeLayout string
 
 	groups []group
 }
@@ -50,7 +52,37 @@ func maybeRelPath(path string) string {
 }
 
 func renderAttr(a *slog.Attr) string {
-	return fmt.Sprintf("(%s: %v)", a.Key, a.Value)
+	if a.Value.Kind() == slog.KindGroup {
+		var sb strings.Builder
+		
+		if _, err := fmt.Fprintf(&sb, "(%s", a.Key); err != nil {
+			panic(err)
+		}
+
+		for i, a := range a.Value.Group() {
+			if i == 0 {
+				if _, err := sb.WriteString(": "); err != nil {
+					panic(err)
+				}
+			} else {
+				if _, err := sb.WriteString(" "); err != nil {
+					panic(err)
+				}
+			}
+
+			if _, err := sb.WriteString(renderAttr(&a)); err != nil {
+				panic(err)
+			}
+		}
+
+		if _, err := sb.WriteString(")"); err != nil {
+			panic(err)
+		}
+
+		return sb.String()
+	} else {
+		return fmt.Sprintf("(%s: %v)", a.Key, a.Value)
+	}
 }
 
 func (h *HumanHandler) currentGroup() *group {
@@ -91,7 +123,11 @@ func (h0 *HumanHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 func (h *HumanHandler) Handle(_ context.Context, r slog.Record) (err error) {
 	var fieldPrefix string
 	if !h.Fields.OmitTime {
-		if _, err = io.WriteString(h.w, r.Time.UTC().Format(CompactRFC3339Layout)); err != nil {
+		layout := h.TimeLayout
+		if layout == "" {
+			layout = CompactRFC3339Layout
+		}
+		if _, err = io.WriteString(h.w, r.Time.UTC().Format(layout)); err != nil {
 			return err
 		}
 		fieldPrefix = ":"
