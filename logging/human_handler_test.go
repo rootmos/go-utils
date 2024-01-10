@@ -13,6 +13,7 @@ func ExampleHumanHandler() {
 			OmitTime: true,
 			OmitPID: true,
 		},
+		HumanLevel: LevelTrace,
 	}
 
 	logger, closer, err := cfg.SetupLogger()
@@ -25,17 +26,17 @@ func ExampleHumanHandler() {
 	logger.Info("foo", "a", 8)
 
 	logger2 := logger.With("b", 9)
-	logger2.Info("bar")
+	logger2.Debug("bar")
 
 	logger3 := logger.WithGroup("c")
-	logger3.Info("baz", "d", true, "e", 10)
+	logger3.Warn("baz", "d", true, "e", 10)
 
-	logger.Info("bye", slog.Group("g", "f", 11))
+	logger.Trace("bye", slog.Group("g", "f", 11))
 
 	// Output:
-	// rootmos.io/go-utils/logging.ExampleHumanHandler:human_handler_test.go:24 hello: 7
-	// rootmos.io/go-utils/logging.ExampleHumanHandler:human_handler_test.go:25 foo (a: 8)
-	// rootmos.io/go-utils/logging.ExampleHumanHandler:human_handler_test.go:28 bar (b: 9)
-	// rootmos.io/go-utils/logging.ExampleHumanHandler:human_handler_test.go:31 baz (c: (d: true) (e: 10))
-	// rootmos.io/go-utils/logging.ExampleHumanHandler:human_handler_test.go:33 bye (g: (f: 11))
+	// rootmos.io/go-utils/logging.ExampleHumanHandler:human_handler_test.go:25:INFO hello: 7
+	// rootmos.io/go-utils/logging.ExampleHumanHandler:human_handler_test.go:26:INFO foo (a: 8)
+	// rootmos.io/go-utils/logging.ExampleHumanHandler:human_handler_test.go:29:DEBUG bar (b: 9)
+	// rootmos.io/go-utils/logging.ExampleHumanHandler:human_handler_test.go:32:WARN baz (c: (d: true) (e: 10))
+	// rootmos.io/go-utils/logging.ExampleHumanHandler:human_handler_test.go:34:TRACE bye (g: (f: 11))
 }

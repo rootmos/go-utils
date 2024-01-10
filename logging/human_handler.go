@@ -29,6 +29,7 @@ type HumanHandlerFields struct {
 	OmitTime bool
 	OmitPID bool
 	OmitCaller bool
+	OmitLevel bool
 }
 
 func (h *HumanHandler) Enabled(_ context.Context, lvl slog.Level) bool {
@@ -54,7 +55,7 @@ func maybeRelPath(path string) string {
 func renderAttr(a *slog.Attr) string {
 	if a.Value.Kind() == slog.KindGroup {
 		var sb strings.Builder
-		
+
 		if _, err := fmt.Fprintf(&sb, "(%s", a.Key); err != nil {
 			panic(err)
 		}
@@ -194,6 +195,17 @@ func (h *HumanHandler) Handle(_ context.Context, r slog.Record) (err error) {
 			if _, err = fmt.Fprintf(h.w, "%s%d", fieldPrefix, line); err != nil {
 				return err
 			}
+		}
+		fieldPrefix = ":"
+	}
+
+	if !h.Fields.OmitLevel {
+		l := r.Level.String()
+		if r.Level == slog.Level(LevelTrace) {
+			l = "TRACE"
+		}
+		if _, err = fmt.Fprintf(h.w, "%s%s", fieldPrefix, l); err != nil {
+			return err
 		}
 		fieldPrefix = ":"
 	}
