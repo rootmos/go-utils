@@ -4,11 +4,11 @@ import (
 	"os"
 	"syscall"
 	"testing"
-	"path/filepath"
 	"bufio"
 	"reflect"
 	"math/rand"
 	"time"
+	"io"
 )
 
 var seed = time.Now().UnixNano()
@@ -27,14 +27,8 @@ func fork(f func()) (*os.Process, error) {
 	return os.FindProcess(int(r1))
 }
 
-func lines(path string) (ls []string, err error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
+func lines(r io.Reader) (ls []string, err error) {
+	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		ls = append(ls, scanner.Text())
 	}
@@ -46,27 +40,79 @@ func lines(path string) (ls []string, err error) {
 	return
 }
 
-func TestExit(t *testing.T) {
-	tmp := t.TempDir()
-	stdoutPath := filepath.Join(tmp, "stdout")
-	stderrPath := filepath.Join(tmp, "stderr")
+func run(f func()) (st *os.ProcessState, stdout, stderr []string, err error) {
+	stdoutR, stdoutW, err := os.Pipe()
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
+	stderrR, stderrW, err := os.Pipe()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	proc, err := fork(func() {
+		os.Stdout = stdoutW
+		if err := stdoutR.Close(); err != nil {
+			panic(err)
+		}
+
+		os.Stderr = stderrW
+		if err := stderrR.Close(); err != nil {
+			panic(err)
+		}
+
+		f()
+
+		if err := stdoutW.Close(); err != nil {
+			panic(err)
+		}
+		if err := stderrW.Close(); err != nil {
+			panic(err)
+		}
+	})
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	if err = stdoutW.Close(); err != nil {
+		return nil, nil, nil, err
+	}
+	if err = stderrW.Close(); err != nil {
+		return nil, nil, nil, err
+	}
+
+	st, err = proc.Wait()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	stdout, err = lines(stdoutR)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if err = stdoutR.Close(); err != nil {
+		return nil, nil, nil, err
+	}
+
+	stderr, err = lines(stderrR)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if err = stderrR.Close(); err != nil {
+		return nil, nil, nil, err
+	}
+
+	return st, stdout, stderr, nil
+}
+
+func TestExit(t *testing.T) {
 	// For portability, the status code should be in the range [0, 125].
 	ec := prng.Intn(125+1)
 
-	proc, err := fork(func() {
-		stdout, err := os.Create(stdoutPath)
-		if err != nil {
-			panic(err)
-		}
-
-		stderr, err := os.Create(stderrPath)
-		if err != nil {
-			panic(err)
-		}
-
+	st, stdout, stderr, err := run(func() {
 		cfg := Config {
-			HumanWriter: stdout,
+			HumanWriter: os.Stdout,
 			HumanFields: HumanHandlerFields {
 				OmitTime: true,
 				OmitPID: true,
@@ -79,15 +125,10 @@ func TestExit(t *testing.T) {
 		}
 
 		logger.ExitLevel = LevelError
-		logger.ExitWriter = stderr
+		logger.ExitWriter = os.Stderr
 
 		logger.Exit(ec, "oops!")
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	st, err := proc.Wait()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,29 +137,44 @@ func TestExit(t *testing.T) {
 		t.Fatalf("unexpected exit code: %d", st.ExitCode())
 	}
 
-
-	stdout, err := lines(stdoutPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	expectedStdout := []string {
-		"rootmos.io/go-utils/logging.TestExit.func1:logging_test.go:84:ERROR oops!",
+		"rootmos.io/go-utils/logging.TestExit.func1:logging_test.go:130:ERROR oops!",
 	}
-
 	if !reflect.DeepEqual(stdout, expectedStdout) {
 		t.Fatalf("unexpected stdout: %v != %v", stdout, expectedStdout)
-	}
-
-	stderr, err := lines(stderrPath)
-	if err != nil {
-		t.Fatal(err)
 	}
 
 	expectedstderr := []string {
 		"oops!",
 	}
+	if !reflect.DeepEqual(stderr, expectedstderr) {
+		t.Fatalf("unexpected stderr: %v != %v", stderr, expectedstderr)
+	}
+}
 
+func TestExitWithNilLogger(t *testing.T) {
+	// For portability, the status code should be in the range [0, 125].
+	ec := prng.Intn(125+1)
+
+	st, stdout, stderr, err := run(func() {
+		var logger *Logger
+		logger.Exitf(ec, "really bad: %d", 7)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if st.ExitCode() != ec {
+		t.Fatalf("unexpected exit code: %d", st.ExitCode())
+	}
+
+	if stdout != nil {
+		t.Fatalf("unexpected stdout: %v", stdout)
+	}
+
+	expectedstderr := []string {
+		"really bad: 7",
+	}
 	if !reflect.DeepEqual(stderr, expectedstderr) {
 		t.Fatalf("unexpected stderr: %v != %v", stderr, expectedstderr)
 	}

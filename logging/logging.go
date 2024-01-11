@@ -268,7 +268,7 @@ func (l *Logger) ExitContext(ctx context.Context, code int, msg string, args ...
 }
 
 func (l *Logger) Exitf(code int, format string, args ...any) {
-	l.exit(nil, code, format, args...)
+	l.exit(nil, code, fmt.Sprintf(format, args...))
 }
 
 func (l *Logger) ExitfContext(ctx context.Context, code int, format string, args ...any) {
@@ -276,10 +276,18 @@ func (l *Logger) ExitfContext(ctx context.Context, code int, format string, args
 }
 
 func (l *Logger) exit(ctx context.Context, code int, msg string, args ...any) {
-	l.log(ctx, 4, l.ExitLevel, msg, args...)
+	if l != nil {
+		l.log(ctx, 4, l.ExitLevel, msg, args...)
+	}
 
-	if l.ExitWriter != nil {
-		if _, err := fmt.Fprintf(l.ExitWriter, "%s\n", msg); err != nil {
+	var w io.Writer
+	if l != nil {
+		w = l.ExitWriter
+	} else {
+		w = os.Stderr
+	}
+	if w != nil {
+		if _, err := fmt.Fprintf(w, "%s\n", msg); err != nil {
 			panic(err)
 		}
 	}
