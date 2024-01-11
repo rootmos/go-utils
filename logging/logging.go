@@ -122,9 +122,9 @@ func (c *Config) SetupLogger() (l *Logger, closer func() error, err error) {
 
 	var cs []io.Closer
 
-	if c.HumanWriter == nil && c.humanFileFlag != nil && *c.humanFileFlag != "" {
+	if c.HumanWriter == nil && c.humanFileFlag != nil {
 		switch *c.humanFileFlag {
-		case "/dev/null":
+		case "/dev/null", "":
 		case "/dev/stdout", "-":
 			c.HumanWriter = os.Stdout
 		case "/dev/stderr":
@@ -154,9 +154,9 @@ func (c *Config) SetupLogger() (l *Logger, closer func() error, err error) {
 		})
 	}
 
-	if c.JsonWriter == nil && c.jsonFileFlag != nil && *c.jsonFileFlag != "" {
+	if c.JsonWriter == nil && c.jsonFileFlag != nil {
 		switch *c.jsonFileFlag {
-		case "/dev/null":
+		case "/dev/null", "":
 		case "/dev/stdout", "-":
 			c.JsonWriter = os.Stdout
 		case "/dev/stderr":
@@ -199,7 +199,8 @@ func (c *Config) SetupLogger() (l *Logger, closer func() error, err error) {
 	var inner *slog.Logger
 	switch len(hs) {
 	case 0:
-		inner = slog.Default() // TODO: or use a NullHandler?
+		nh := NullHandler{}
+		inner = slog.New(&nh)
 	case 1:
 		inner = slog.New(hs[0])
 	default:
