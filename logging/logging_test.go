@@ -117,15 +117,14 @@ func TestExit(t *testing.T) {
 				OmitTime: true,
 				OmitPID: true,
 			},
+			ExitLevel: LevelError,
+			ExitWriter: os.Stderr,
 		}
 
 		logger, _, err := cfg.SetupLogger()
 		if err != nil {
 			panic(err)
 		}
-
-		logger.ExitLevel = LevelError
-		logger.ExitWriter = os.Stderr
 
 		logger.Exit(ec, "oops!")
 	})
@@ -138,7 +137,7 @@ func TestExit(t *testing.T) {
 	}
 
 	expectedStdout := []string {
-		"rootmos.io/go-utils/logging.TestExit.func1:logging_test.go:130:ERROR oops!",
+		"rootmos.io/go-utils/logging.TestExit.func1:logging_test.go:129:ERROR oops!",
 	}
 	if !reflect.DeepEqual(stdout, expectedStdout) {
 		t.Fatalf("unexpected stdout: %v != %v", stdout, expectedStdout)

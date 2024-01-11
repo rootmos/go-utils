@@ -90,6 +90,9 @@ type Config struct {
 	jsonFileFlag *string
 	jsonCloser io.Closer
 
+	ExitWriter io.Writer
+	ExitLevel Level
+
 	Handlers []slog.Handler
 }
 
@@ -108,6 +111,9 @@ func PrepareConfig(envPrefix string) Config {
 
 		jsonLevelFlag: flag.String("json-log-level", getenv("JSON_LOG_LEVEL", "INFO"), "set JSON log level"),
 		jsonFileFlag: flag.String("json-log-file", getenv("JSON_LOG_FILE", "/dev/null"), "log JSON to file"),
+
+		ExitWriter: os.Stderr,
+		ExitLevel: LevelDebug,
 	}
 }
 
@@ -201,7 +207,14 @@ func (c *Config) SetupLogger() (l *Logger, closer func() error, err error) {
 		inner = slog.New(&mh)
 	}
 
-	return &Logger{ inner: inner }, mkCloser(cs), nil
+	logger := Logger{
+		inner: inner,
+
+		ExitWriter: c.ExitWriter,
+		ExitLevel: c.ExitLevel,
+	}
+
+	return &logger, mkCloser(cs), nil
 }
 
 func (c *Config) SetupDefaultLogger() (*Logger, func() error, error) {
