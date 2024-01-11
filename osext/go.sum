@@ -40,3 +40,7 @@ rootmos.io/go-utils/hashed v0.1.0 h1:cRJMkxKO0La1b6dc3FDCpBkfZAwmaWGKHFOqvGaoT/A
 rootmos.io/go-utils/hashed v0.1.0/go.mod h1:Z7uQqsqIUhbTW+VkLOVIzjMueTB2+LjPAFKoN5269lM=
 rootmos.io/go-utils/logging v0.1.0 h1:VKxw+MVeFvftBnvniLkNwU8pCRCx9qSKpYlBBZvK9Yc=
 rootmos.io/go-utils/logging v0.1.0/go.mod h1:C9gOvKJZDcHdzRRmoLp2LKzqDzG0GNyQ6lr6+AkNMK8=
+rootmos.io/go-utils/logging v0.2.0 h1:Kt1XC/ZbsCuvwicqGUQnTl5DRAG68ITrmuWrek2mQHY=
+rootmos.io/go-utils/logging v0.2.0/go.mod h1:C9gOvKJZDcHdzRRmoLp2LKzqDzG0GNyQ6lr6+AkNMK8=
+rootmos.io/go-utils/logging v0.2.1 h1:dFcKOKz0Ro6xoywhPzfqXRVeTfjdig+aCKYz/R8ttbA=
+rootmos.io/go-utils/logging v0.2.1/go.mod h1:C9gOvKJZDcHdzRRmoLp2LKzqDzG0GNyQ6lr6+AkNMK8=

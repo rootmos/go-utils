@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.48.0
 	github.com/aws/smithy-go v1.19.0
 	rootmos.io/go-utils/hashed v0.1.0
-	rootmos.io/go-utils/logging v0.1.0
+	rootmos.io/go-utils/logging v0.2.1
 )
 
 require (
