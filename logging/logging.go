@@ -16,14 +16,21 @@ const Key = "logger"
 
 type Logger struct {
 	inner *slog.Logger
+
+	ExitWriter io.Writer
+	ExitLevel Level
 }
 
-func (l *Logger) With(args ...any) *Logger {
-	return &Logger { inner: l.inner.With(args...) }
+func (l0 *Logger) With(args ...any) *Logger {
+	l1 := *l0
+	l1.inner = l1.inner.With(args...)
+	return &l1
 }
 
-func (l *Logger) WithGroup(name string) *Logger {
-	return &Logger { inner: l.inner.WithGroup(name) }
+func (l0 *Logger) WithGroup(name string) *Logger {
+	l1 := *l0
+	l1.inner = l1.inner.WithGroup(name)
+	return &l1
 }
 
 func Set(ctx context.Context, logger *Logger) context.Context {
@@ -224,14 +231,14 @@ func mkCloser(cs []io.Closer) (func() error) {
 	}
 }
 
-func (l *Logger) log(ctx context.Context, lvl Level, msg string, args ...any) {
+func (l *Logger) log(ctx context.Context, skip int, lvl Level, msg string, args ...any) {
 	slvl := slog.Level(lvl)
 	if !l.inner.Enabled(ctx, slvl) {
 		return
 	}
 
 	var pcs [1]uintptr
-	runtime.Callers(3, pcs[:])
+	runtime.Callers(skip, pcs[:])
 	pc := pcs[0] - 1
 
 	r := slog.NewRecord(time.Now(), slvl, msg, pc)
@@ -253,21 +260,31 @@ func (l *Logger) log(ctx context.Context, lvl Level, msg string, args ...any) {
 }
 
 func (l *Logger) Exit(code int, msg string, args ...any) {
-	l.ExitContext(nil, code, msg, args...)
+	l.exit(nil, code, msg, args...)
 }
 
 func (l *Logger) ExitContext(ctx context.Context, code int, msg string, args ...any) {
-	l.log(ctx, LevelError, msg, args...)
-	if _, err := fmt.Fprintf(os.Stderr, "%s\n", msg); err != nil {
-		panic(err)
-	}
-	os.Exit(code)
+	l.exit(ctx, code, msg, args...)
 }
 
 func (l *Logger) Exitf(code int, format string, args ...any) {
-	l.ExitfContext(nil, code, format, args...)
+	l.exit(nil, code, format, args...)
 }
 
 func (l *Logger) ExitfContext(ctx context.Context, code int, format string, args ...any) {
-	l.ExitContext(ctx, code, fmt.Sprintf(format, args...))
+	l.exit(ctx, code, fmt.Sprintf(format, args...))
+}
+
+func (l *Logger) exit(ctx context.Context, code int, msg string, args ...any) {
+	l.log(ctx, 4, l.ExitLevel, msg, args...)
+
+	if l.ExitWriter != nil {
+		if _, err := fmt.Fprintf(l.ExitWriter, "%s\n", msg); err != nil {
+			panic(err)
+		}
+	}
+
+	// TODO close
+
+	os.Exit(code)
 }
