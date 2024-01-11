@@ -49,7 +49,11 @@ func maybeRelPath(path string) string {
 		return path
 	}
 
-	return rel
+	if len(rel) < len(path) {
+		return rel
+	} else {
+		return path
+	}
 }
 
 func renderAttr(a *slog.Attr) string {
