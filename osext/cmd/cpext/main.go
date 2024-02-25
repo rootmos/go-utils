@@ -14,6 +14,10 @@ import (
 
 const EnvPrefix = "CPEXT_"
 
+func init() {
+	logging.DefaultHumanLevel = "WARN"
+}
+
 func main() {
 	logConfig := logging.PrepareConfig(EnvPrefix)
 	flag.Parse()
@@ -33,7 +37,7 @@ func main() {
 
 	src := flag.Args()[0]
 	dst := flag.Args()[1]
-	logger.Debugf("%s -> %s", src, dst)
+	logger.Infof("%s -> %s", src, dst)
 
 	r, err := osext.Open(ctx, src)
 	if err != nil {
