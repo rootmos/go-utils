@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -19,6 +20,7 @@ func init() {
 }
 
 func main() {
+	verbose := flag.Bool("v", false, "print actions taken to stderr")
 	logConfig := logging.PrepareConfig(EnvPrefix)
 	flag.Parse()
 
@@ -56,5 +58,9 @@ func main() {
 		} else {
 			logger.Exitf(1, "unexpected error while creating destination: %s", err)
 		}
+	}
+
+	if *verbose {
+		fmt.Fprintf(os.Stderr, "%s -> %s\n", src, dst)
 	}
 }
