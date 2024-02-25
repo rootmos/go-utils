@@ -81,20 +81,23 @@ type Config struct {
 	humanLevelFlag *string
 	HumanLevel Level
 	humanFileFlag *string
-	humanCloser io.Closer
 	HumanFields HumanHandlerFields
 
 	JsonWriter io.Writer
 	jsonLevelFlag *string
 	JsonLevel Level
 	jsonFileFlag *string
-	jsonCloser io.Closer
 
 	ExitWriter io.Writer
 	ExitLevel Level
 
 	Handlers []slog.Handler
 }
+
+var (
+	DefaultHumanLevel = "INFO"
+	DefaultJsonLevel = "INFO"
+)
 
 func PrepareConfig(envPrefix string) Config {
 	getenv := func(key, def string) string {
@@ -106,10 +109,10 @@ func PrepareConfig(envPrefix string) Config {
 		}
 	}
 	return Config {
-		humanLevelFlag: flag.String("log-level", getenv("LOG_LEVEL", "INFO"), "set log level"),
+		humanLevelFlag: flag.String("log-level", getenv("LOG_LEVEL", DefaultHumanLevel), "set log level"),
 		humanFileFlag: flag.String("log-file", getenv("LOG_FILE", "/dev/stderr"), "log to file"),
 
-		jsonLevelFlag: flag.String("json-log-level", getenv("JSON_LOG_LEVEL", "INFO"), "set JSON log level"),
+		jsonLevelFlag: flag.String("json-log-level", getenv("JSON_LOG_LEVEL", DefaultJsonLevel), "set JSON log level"),
 		jsonFileFlag: flag.String("json-log-file", getenv("JSON_LOG_FILE", "/dev/null"), "log JSON to file"),
 
 		ExitWriter: os.Stderr,
